@@ -9,11 +9,14 @@
 import UIKit
 
 public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Sendable {
+    @MainActor
     public init(with config: SUICameraConfig) {
         self.config = config
+        self.deviceOrientation = UIDevice.current.orientation
+        
         super.init()
         
-        _ = self.setup()
+        self.setup()
     }
     
     // MARK: Observable Members
@@ -22,7 +25,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     @Published internal var supportedShutterSpeeds: [SUICameraShutterSpeed] = []
     @Published internal var supportedISO: [SUICameraISO] = []
     @Published internal var supportedWhiteBalance: [SUICameraWB] = []
-    @Published internal var deviceOrientation: UIDeviceOrientation = .portrait
+    @Published internal var deviceOrientation: UIDeviceOrientation
     
     // MARK: Final Members
     internal let config: SUICameraConfig
@@ -35,13 +38,14 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     internal let frameOutput = AVCaptureVideoDataOutput()
     
     internal let cicontext = CIContext()
+    internal let supportedOrientation: [UIDeviceOrientation] = [.portrait, .landscapeRight, .landscapeLeft]
     
     // MARK: Variables
     internal var session: AVCaptureSession?
     public var dataDelegate: SUICameraDataDelegate? = nil
     
     // MARK: Getters & Setters
-    var busy: Bool {
+    internal var busy: Bool {
         get { _busy }
         set {
             mainqueue.async {
@@ -50,9 +54,9 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         }
     }
     
-    var currentVideoInputDevice: AVCaptureDevice? { config.videoDevice?.avCaptureDevice }
+    internal var currentVideoInputDevice: AVCaptureDevice? { config.videoDevice?.avCaptureDevice }
     
-    var captureOrientation: AVCaptureVideoOrientation {
+    internal var captureOrientation: AVCaptureVideoOrientation {
         switch deviceOrientation {
         case .portraitUpsideDown:
             return .portraitUpsideDown
@@ -65,12 +69,12 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         }
     }
     
-    var videoRotationAngle: CGFloat {
+    internal var videoRotationAngle: CGFloat {
         switch deviceOrientation {
-        case .landscapeRight: return 90.0
-        case .portraitUpsideDown: return 180.0
-        case .landscapeLeft: return 270.0
-        default: return 0.0
+        case .landscapeRight: return 180.0
+        case .portraitUpsideDown: return 270.0
+        case .landscapeLeft: return 0.0
+        default: return 90.0
         }
     }
     
@@ -90,7 +94,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         }
     }
     
-    func attach(device: any SUICameraCaptureDevice, to session: AVCaptureSession) throws -> Void {
+    internal func attach(device: any SUICameraCaptureDevice, to session: AVCaptureSession) throws -> Void {
         func removeDevice(of type: DeviceType) -> Void {
             for input in session.inputs {
                 guard let device = (input as? AVCaptureDeviceInput)?.device else { continue }
@@ -114,9 +118,15 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     @objc
     @MainActor
-    private func updateOrientation() -> Void { deviceOrientation = UIDevice.current.orientation }
+    private func updateOrientation() -> Void {
+        let currentOrientation = UIDevice.current.orientation
+        
+        if self.supportedOrientation.contains(currentOrientation) {
+            self.deviceOrientation = currentOrientation
+        }
+    }
     
-    func setup() -> AVCaptureSession {
+    private func setup() -> Void {
         // MARK: Update Device Orientation
         NotificationCenter.default.addObserver(self, selector: #selector(updateOrientation), name: UIDevice.orientationDidChangeNotification, object: nil)
         
@@ -156,110 +166,9 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         } completion: {
             session.startRunning()
         }
-        
-        return session
     }
     
-    public func capturePhoto() -> Void {
-        guard let session = session else { return }
-        
-        configure(session: session, releaseLock: false) {
-            session.sessionPreset = .photo
-        } completion: {
-            guard let connection = self.photoOutput.connection(with: .video), connection.isActive else { return }
-            
-            let photoSettings = AVCapturePhotoSettings()
-            photoSettings.photoQualityPrioritization = .balanced
-            
-            self.photoOutput.capturePhoto(with: photoSettings, delegate: self)
-        }
-    }
-    
-    public func startVideoRecording(at url: URL) -> Void {
-        guard let session = session else { return }
-        
-        configure(session: session, releaseLock: false) {
-            session.sessionPreset = .high
-        } completion: {
-            guard let connection = self.videoOutput.connection(with: .video),
-                  connection.isActive,
-                  !self.videoOutput.isRecording,
-                  url.isFileURL
-            else { return }
-            
-            self.videoOutput.startRecording(to: url, recordingDelegate: self)
-        }
-    }
-    
-    public func stopVideoRecording() -> Void {
-        bgqueue.async {
-            if self.videoOutput.isRecording {
-                self.videoOutput.stopRecording()
-            }
-        }
-    }
-    
-    func fetchSupportedVideoQualities(of device: AVCaptureDevice) -> [SUICameraVideoQuality] {
-        var videoQualities = [SUICameraVideoQuality]()
-        
-        for format in device.formats {
-            let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
-            let frameRateRanges = format.videoSupportedFrameRateRanges
-            
-            for range in frameRateRanges {
-                let frameRate = Int(range.maxFrameRate)
-                
-                guard let videoQuality = SUICameraVideoQuality.fromRawVideoQuality(dimensions, fps: frameRate) else { continue }
-                videoQualities.append(videoQuality)
-            }
-        }
-        
-        return videoQualities
-    }
-    
-    func fetchSupportedShutterSpeeds(of device: AVCaptureDevice) -> [SUICameraShutterSpeed] {
-        let minExposureDuration = CMTimeGetSeconds(device.activeFormat.minExposureDuration)
-        let maxExposureDuration = CMTimeGetSeconds(device.activeFormat.maxExposureDuration)
-        
-        var shutterSpeeds = SUICameraShutterSpeed.allCases.filter { shutterSpeed in
-            let actualSpeed = 1.0 / Float64(shutterSpeed.rawValue)
-            return (minExposureDuration...maxExposureDuration).contains(actualSpeed)
-        }
-        
-        if !shutterSpeeds.contains(.auto) {
-            shutterSpeeds.append(.auto)
-        }
-        
-        return shutterSpeeds
-    }
-    
-    func fetchSupportedISO(of device: AVCaptureDevice) -> [SUICameraISO] {
-        let minISO = Int(device.activeFormat.minISO)
-        let maxISO = Int(device.activeFormat.maxISO)
-        
-        guard minISO < maxISO else { return [] }
-        return SUICameraISO.allCases.filter { (minISO...maxISO).contains($0.rawValue) }
-    }
-    
-    func fetchSupportedWB(of device: AVCaptureDevice) -> [SUICameraWB] {
-        func wbGainAvailable(for value: SUICameraWB) -> Bool {
-            let minWB = 2300
-            let maxWB = 7500
-            
-            guard (minWB...maxWB).contains(value.rawValue) else { return false }
-            
-            let temperatureAndTintValues = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(value.rawValue), tint: value.tint)
-            
-            let wbGains = device.deviceWhiteBalanceGains(for: temperatureAndTintValues)
-            let maxGain = device.maxWhiteBalanceGain
-            
-            return (wbGains.redGain <= maxGain) && (wbGains.greenGain <= maxGain) && (wbGains.blueGain <= maxGain)
-        }
-        
-        return SUICameraWB.allCases.filter { wbGainAvailable(for: $0) }
-    }
-    
-    func stopSession() -> Void {
+    private func stopSession() -> Void {
         session?.stopRunning()
         session = nil
     }
@@ -275,29 +184,5 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     deinit {
         NotificationCenter.default.removeObserver(self)
         stopSession()
-    }
-}
-
-extension SUICameraViewModel: AVCapturePhotoCaptureDelegate {
-    public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: (any Error)?) {
-        self.dataDelegate?.photoOutput?(photo, error: error)
-        self.busy = false
-    }
-}
-
-extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
-    public func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL, from connections: [AVCaptureConnection], error: (any Error)?) {
-        self.dataDelegate?.finishedRecording?(at: outputFileURL, error: error)
-        self.busy = false
-    }
-}
-
-extension SUICameraViewModel: AVCaptureVideoDataOutputSampleBufferDelegate {
-    public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        self.dataDelegate?.frameOutput?(ciImage: ciImage)
-        self.dataDelegate?.frameOutput?(uiImage: uiimage(from: ciImage))
     }
 }

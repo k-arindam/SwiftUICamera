@@ -9,7 +9,7 @@ import UIKit
 import AVFoundation
 
 @objc
-public protocol SUICameraDataDelegate: NSObjectProtocol {
+public protocol SUICameraDataDelegate {
     @objc optional func photoOutput(_ photo: AVCapturePhoto, error: (any Error)?) -> Void
     @objc optional func finishedRecording(at url: URL, error: (any Error)?) -> Void
     @objc optional func frameOutput(ciImage: CIImage) -> Void

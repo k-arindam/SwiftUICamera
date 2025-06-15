@@ -19,26 +19,14 @@ public struct SUICameraView: UIViewRepresentable {
     let scale: Scale
     
     public func makeUIView(context: Context) -> some UIView {
-        let preview = context.coordinator.preview
-        preview.videoGravity = scale.videoGravity
-        preview.session = viewModel.session
-        
-        let view = UIView()
-        view.layer.addSublayer(preview)
-        view.isOpaque = true
+        let view = PreviewLayerContainer()
+        view.connect(with: viewModel)
+        view.preview.videoGravity = scale.videoGravity
         
         return view
     }
     
-    public func updateUIView(_ uiView: UIViewType, context: Context) {
-        context.coordinator.update(with: uiView)
-        
-        let preview = context.coordinator.preview
-        let bounds = uiView.bounds
-        
-        preview.frame = bounds
-        preview.position = CGPoint(x: bounds.midX, y: bounds.midY)
-    }
+    public func updateUIView(_ uiView: UIViewType, context: Context) { context.coordinator.update(with: uiView) }
     
     public func makeCoordinator() -> SUICameraCoordinator { .init(self) }
     
@@ -48,7 +36,6 @@ public struct SUICameraView: UIViewRepresentable {
         }
         
         let parent: SUICameraView
-        let preview = AVCaptureVideoPreviewLayer()
         
         @MainActor func update(with view: UIViewType) -> Void {}
     }
