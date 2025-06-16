@@ -10,7 +10,6 @@ import SwiftUICamera
 import AVFoundation
 
 struct ContentView: View {
-    @StateObject var data = DataDelegate()
     @StateObject var viewModel = SUICameraViewModel(with: .init(
         videoDevice: .backWideAngleCamera,
         audioDevice: .internalMicrophone
@@ -20,30 +19,37 @@ struct ContentView: View {
         VStack {
             SUICameraView(viewModel: viewModel)
             
-            Image(uiImage: data.frame)
-                .resizable()
-                .scaledToFit()
-            
-            Button("Capture Photo", action: viewModel.capturePhoto)
-                .buttonStyle(.borderedProminent)
+            HStack {
+                Button("Capture Photo", action: viewModel.capturePhoto)
+                    .buttonStyle(.borderedProminent)
+                
+                Button("Start Video Recording", action: viewModel.startVideoRecording)
+                    .buttonStyle(.borderedProminent)
+                
+                Button("Stop Video Recording", action: viewModel.stopVideoRecording)
+                    .buttonStyle(.borderedProminent)
+            }
         }
         .padding()
-        .task { viewModel.dataDelegate = data }
+        .task { viewModel.dataDelegate = DataHandler() }
     }
 }
 
-final class DataDelegate: ObservableObject, SUICameraDataDelegate {
-    @Published var frame = UIImage()
+final class DataHandler: SUICameraDataDelegate {
+    let captureFrames: Bool = true
     
-    func photoOutput(_ photo: AVCapturePhoto, error: (any Error)?) {
-        debugPrint("----->>> Photo Captured!")
+    func photoOutput(_ photo: UIImage?) {
+        guard let output = photo else { return }
+        UIImageWriteToSavedPhotosAlbum(output, nil, nil, nil)
     }
     
-    func frameOutput(uiImage: UIImage?) {
-        if let uiImage {
-            DispatchQueue.main.async {
-                self.frame = uiImage
-            }
+    func finishedRecording(at url: URL, error: (any Error)?) {
+        guard error == nil else { return }
+        
+        let path = url.path()
+        let canSave = UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path)
+        if canSave {
+            UISaveVideoAtPathToSavedPhotosAlbum(path, nil, nil, nil)
         }
     }
 }

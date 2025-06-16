@@ -13,6 +13,16 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
         self.busy = false
     }
     
+    public func startVideoRecording() -> Void {
+        let fileType = AVFileType.mov.rawValue
+        let videoID = UUID().uuidString
+        
+        guard let uttype = UTType(fileType) else { return }
+        
+        let videoURL = tmpDir.appendingPathComponent("\(videoID).mov", conformingTo: uttype)
+        startVideoRecording(at: videoURL)
+    }
+    
     public func startVideoRecording(at url: URL) -> Void {
         guard let session = session else { return }
         
@@ -24,6 +34,11 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
                   !self.videoOutput.isRecording,
                   url.isFileURL
             else { return }
+            
+            let rotation = self.videoRotationAngle
+            if connection.isVideoRotationAngleSupported(rotation) {
+                connection.videoRotationAngle = rotation
+            }
             
             self.videoOutput.startRecording(to: url, recordingDelegate: self)
         }

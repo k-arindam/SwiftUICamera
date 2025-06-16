@@ -6,10 +6,22 @@
 //
 
 @preconcurrency import AVFoundation
+import UIKit
 
 extension SUICameraViewModel: AVCapturePhotoCaptureDelegate {
     public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: (any Error)?) {
-        self.dataDelegate?.photoOutput?(photo, error: error)
+        if let dataDelegate {
+            dataDelegate.photoOutput?(photo, error: error)
+            
+            if error == nil, let data = photo.fileDataRepresentation(), !data.isEmpty {
+                if let cgImageSource = CGImageSourceCreateWithData(data as CFData, nil),
+                   let cgImage = CGImageSourceCreateImageAtIndex(cgImageSource, 0, nil) {
+                    let uiImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: uiimageOrientation)
+                    dataDelegate.photoOutput?(uiImage)
+                }
+            }
+        }
+        
         self.busy = false
     }
     

@@ -31,13 +31,18 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     internal let config: SUICameraConfig
     
     internal let mainqueue = DispatchQueue.main
-    internal let bgqueue = DispatchQueue(label: "swiftuicamera", qos: .background)
+    internal let bgqueue = DispatchQueue(label: "in.karindam.SUICameraViewModel", qos: .background)
     
     internal let photoOutput = AVCapturePhotoOutput()
     internal let videoOutput = AVCaptureMovieFileOutput()
     internal let frameOutput = AVCaptureVideoDataOutput()
     
-    internal let cicontext = CIContext()
+    internal let cicontext = CIContext(options: [
+        .useSoftwareRenderer: false,
+        .cacheIntermediates: true
+    ])
+    internal let ciImageRenderThread = CIImageRenderThread()
+    internal let tmpDir = FileManager.default.temporaryDirectory
     internal let supportedOrientation: [UIDeviceOrientation] = [.portrait, .landscapeRight, .landscapeLeft]
     
     // MARK: Variables
@@ -56,6 +61,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     internal var currentVideoInputDevice: AVCaptureDevice? { config.videoDevice?.avCaptureDevice }
     
+    @available(iOS, deprecated: 17.0)
     internal var captureOrientation: AVCaptureVideoOrientation {
         switch deviceOrientation {
         case .portraitUpsideDown:
@@ -66,6 +72,19 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
             return .landscapeRight
         default:
             return .portrait
+        }
+    }
+    
+    internal var uiimageOrientation: UIImage.Orientation {
+        switch deviceOrientation {
+        case .portraitUpsideDown:
+            return .left
+        case .landscapeLeft:
+            return .up
+        case .landscapeRight:
+            return .down
+        default:
+            return .right
         }
     }
     
@@ -126,7 +145,21 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         }
     }
     
+    private func cleanTmpFiles() -> Void {
+        let manager = FileManager.default
+        
+        guard let files = try? manager.contentsOfDirectory(atPath: tmpDir.path()) else { return }
+        
+        for file in files {
+            let fileURL = tmpDir.appending(path: file)
+            try? manager.removeItem(at: fileURL)
+        }
+    }
+    
     private func setup() -> Void {
+        // MARK: Clean Temporary Files Created By Previous Session
+        self.cleanTmpFiles()
+        
         // MARK: Update Device Orientation
         NotificationCenter.default.addObserver(self, selector: #selector(updateOrientation), name: UIDevice.orientationDidChangeNotification, object: nil)
         
@@ -173,9 +206,15 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         session = nil
     }
     
-    internal func uiimage(from ciimage: CIImage) -> UIImage? {
+    internal func uiimage(from ciimage: CIImage, orientation: UIImage.Orientation = .up) -> UIImage? {
         if let cgimage = self.cicontext.createCGImage(ciimage, from: ciimage.extent) {
-            return UIImage(cgImage: cgimage)
+            let uiImage = UIImage(
+                cgImage: cgimage,
+                scale: 1.0,
+                orientation: orientation
+            )
+            
+            return uiImage
         }
         
         return nil
