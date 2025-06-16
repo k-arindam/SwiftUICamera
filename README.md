@@ -1,3 +1,5 @@
+[![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fk-arindam%2FSwiftUICamera%2Fbadge%3Ftype%3Dswift-versions)](https://swiftpackageindex.com/k-arindam/SwiftUICamera) [![](https://img.shields.io/endpoint?url=https%3A%2F%2Fswiftpackageindex.com%2Fapi%2Fpackages%2Fk-arindam%2FSwiftUICamera%2Fbadge%3Ftype%3Dplatforms)](https://swiftpackageindex.com/k-arindam/SwiftUICamera)
+
 ![Banner](assets/banner.jpg)
 
 # SwiftUICamera
