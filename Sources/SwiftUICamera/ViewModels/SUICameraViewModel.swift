@@ -11,7 +11,10 @@ import UIKit
 public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Sendable {
     @MainActor
     public init(with config: SUICameraConfig) {
-        self.config = config
+        self.videoDevice = config.videoDevice
+        self.audioDevice = config.audioDevice
+        self.currentMode = config.initialMode
+        
         self.deviceOrientation = UIDevice.current.orientation
         
         super.init()
@@ -21,6 +24,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     // MARK: Observable Members
     @Published internal var _busy: Bool = false
+    @Published internal var currentMode: CameraMode
     @Published internal var supportedVideoQualities: [SUICameraVideoQuality] = []
     @Published internal var supportedShutterSpeeds: [SUICameraShutterSpeed] = []
     @Published internal var supportedISO: [SUICameraISO] = []
@@ -28,8 +32,6 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     @Published internal var deviceOrientation: UIDeviceOrientation
     
     // MARK: Final Members
-    internal let config: SUICameraConfig
-    
     internal let mainqueue = DispatchQueue.main
     internal let bgqueue = DispatchQueue(label: "in.karindam.SUICameraViewModel", qos: .background)
     
@@ -47,6 +49,9 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     // MARK: Variables
     internal var session: AVCaptureSession?
+    internal var videoDevice: SUICameraVideoDevice? = nil
+    internal var audioDevice: SUICameraAudioDevice? = nil
+    
     public var dataDelegate: SUICameraDataDelegate? = nil
     
     // MARK: Getters & Setters
@@ -59,7 +64,12 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         }
     }
     
-    internal var currentVideoInputDevice: AVCaptureDevice? { config.videoDevice?.avCaptureDevice }
+    public var currentCameraMode: CameraMode {
+        get { currentMode }
+        set { switchMode(to: newValue) }
+    }
+    
+    internal var currentVideoInputDevice: AVCaptureDevice? { videoDevice?.avCaptureDevice }
     
     @available(iOS, deprecated: 17.0)
     internal var captureOrientation: AVCaptureVideoOrientation {
@@ -171,16 +181,16 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         try? AVAudioSession.sharedInstance().setActive(true)
         
         configure(session: session) {
-            session.sessionPreset = self.config.initialPreset
+            session.sessionPreset = self.currentMode.preset
             
             do {
                 // MARK: Add Video Input Device
-                if let videoDevice = self.config.videoDevice {
+                if let videoDevice = self.videoDevice {
                     try self.attach(device: videoDevice, to: session)
                 }
                 
                 // MARK: Add Audio Input Device
-                if let audioDevice = self.config.audioDevice {
+                if let audioDevice = self.audioDevice {
                     try self.attach(device: audioDevice, to: session)
                 }
                 
@@ -198,6 +208,33 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
             }
         } completion: {
             session.startRunning()
+        }
+    }
+    
+    public func change(aspectRatio to: Int) -> Void {
+        guard currentMode == .photo else { return }
+    }
+    
+    public func switchMode(to mode: CameraMode) -> Void {
+        self.switchMode(to: mode, releaseLock: true) { _ in }
+    }
+    
+    internal func switchMode(
+        to mode: CameraMode,
+        releaseLock: Bool = true,
+        completion: @Sendable @escaping (_ mutated: Bool) -> Void
+    ) -> Void {
+        guard self.currentMode != mode, let session else {
+            completion(false)
+            return
+        }
+        
+        mainqueue.async { self.currentMode = mode }
+        
+        self.configure(session: session, releaseLock: releaseLock) {
+            session.sessionPreset = mode.preset
+        } completion: {
+            completion(true)
         }
     }
     

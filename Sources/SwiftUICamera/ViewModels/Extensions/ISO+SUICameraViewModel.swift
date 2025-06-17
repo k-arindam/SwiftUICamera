@@ -15,4 +15,6 @@ public extension SUICameraViewModel {
         guard minISO < maxISO else { return [] }
         return SUICameraISO.allCases.filter { (minISO...maxISO).contains($0.rawValue) }
     }
+    
+    public func change(iso to: SUICameraISO) -> Void {}
 }

@@ -11,25 +11,27 @@ public struct SUICameraConfig {
     public init(
         videoDevice: SUICameraVideoDevice? = nil,
         audioDevice: SUICameraAudioDevice? = nil,
-        initialPreset: AVCaptureSession.Preset = .photo
+        initialMode: CameraMode = .photo
     ) {
         self.videoDevice = videoDevice
         self.audioDevice = audioDevice
-        self.initialPreset = initialPreset
+        self.initialMode = initialMode
     }
     
     let videoDevice: SUICameraVideoDevice?
     let audioDevice: SUICameraAudioDevice?
     
-    let initialPreset: AVCaptureSession.Preset
+    let initialMode: CameraMode
     
     internal func copyWith(
         videoDevice: SUICameraVideoDevice? = nil,
-        audioDevice: SUICameraAudioDevice? = nil
+        audioDevice: SUICameraAudioDevice? = nil,
+        initialMode: CameraMode? = nil
     ) -> SUICameraConfig {
         .init(
             videoDevice: videoDevice ?? self.videoDevice,
-            audioDevice: audioDevice ?? self.audioDevice
+            audioDevice: audioDevice ?? self.audioDevice,
+            initialMode: initialMode ?? self.initialMode
         )
     }
 }

@@ -23,4 +23,6 @@ public extension SUICameraViewModel {
         
         return shutterSpeeds
     }
+    
+    public func change(shutterSpeed to: SUICameraShutterSpeed) -> Void {}
 }

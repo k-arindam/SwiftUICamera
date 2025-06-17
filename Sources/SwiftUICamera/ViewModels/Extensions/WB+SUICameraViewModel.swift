@@ -25,4 +25,6 @@ public extension SUICameraViewModel {
         
         return SUICameraWB.allCases.filter { wbGainAvailable(for: $0) }
     }
+    
+    public func change(whiteBalance to: SUICameraWB) -> Void {}
 }

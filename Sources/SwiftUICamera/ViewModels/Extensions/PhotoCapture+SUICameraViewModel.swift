@@ -26,11 +26,7 @@ extension SUICameraViewModel: AVCapturePhotoCaptureDelegate {
     }
     
     public func capturePhoto() -> Void {
-        guard let session = session else { return }
-        
-        configure(session: session, releaseLock: false) {
-            session.sessionPreset = .photo
-        } completion: {
+        self.switchMode(to: .photo, releaseLock: false) { mutated in
             guard let connection = self.photoOutput.connection(with: .video), connection.isActive else { return }
             
             let photoSettings = AVCapturePhotoSettings()

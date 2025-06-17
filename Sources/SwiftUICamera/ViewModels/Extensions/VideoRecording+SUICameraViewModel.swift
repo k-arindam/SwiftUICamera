@@ -24,11 +24,7 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
     }
     
     public func startVideoRecording(at url: URL) -> Void {
-        guard let session = session else { return }
-        
-        configure(session: session, releaseLock: false) {
-            session.sessionPreset = .high
-        } completion: {
+        self.switchMode(to: .video, releaseLock: false) { mutated in
             guard let connection = self.videoOutput.connection(with: .video),
                   connection.isActive,
                   !self.videoOutput.isRecording,
@@ -51,6 +47,8 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
             }
         }
     }
+    
+    public func change(videoQuality to: SUICameraVideoQuality) -> Void {}
     
     internal func fetchSupportedVideoQualities(of device: AVCaptureDevice) -> [SUICameraVideoQuality] {
         var videoQualities = [SUICameraVideoQuality]()

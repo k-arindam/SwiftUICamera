@@ -7,8 +7,9 @@
 
 import Foundation
 
-public enum SUICameraError: String, Error {
+public enum SUICameraError: Error, Codable, Sendable {
     case deviceUnavailable
     case unableToAttachDevice
     case unknown
+    case system(String)
 }

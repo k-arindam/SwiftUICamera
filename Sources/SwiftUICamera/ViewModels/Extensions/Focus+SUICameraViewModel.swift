@@ -7,4 +7,6 @@
 
 import Foundation
 
-public extension SUICameraViewModel {}
+public extension SUICameraViewModel {
+    func change(focus to: Int) -> Void {}
+}
