@@ -9,19 +9,15 @@ import SwiftUI
 import AVFoundation
 
 public struct SUICameraView: UIViewRepresentable {
-    public init(viewModel: SUICameraViewModel, scale: Scale = .fit) {
+    public init(viewModel: SUICameraViewModel) {
         self.viewModel = viewModel
-        self.scale = scale
     }
     
     @ObservedObject private var viewModel: SUICameraViewModel
     
-    let scale: Scale
-    
     public func makeUIView(context: Context) -> some UIView {
         let view = PreviewLayerContainer()
         view.connect(with: viewModel)
-        view.preview.videoGravity = scale.videoGravity
         
         return view
     }
@@ -38,19 +34,5 @@ public struct SUICameraView: UIViewRepresentable {
         let parent: SUICameraView
         
         @MainActor func update(with view: UIViewType) -> Void {}
-    }
-    
-    public enum Scale {
-        case fit
-        case fill
-        
-        var videoGravity: AVLayerVideoGravity {
-            switch self {
-            case .fit:
-                return .resizeAspect
-            case .fill:
-                return .resizeAspectFill
-            }
-        }
     }
 }

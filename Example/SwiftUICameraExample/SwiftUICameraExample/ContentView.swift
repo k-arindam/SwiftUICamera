@@ -16,6 +16,25 @@ struct ContentView: View {
         initialMode: .photo
     ))
     
+    private func buildMenu<T: SUICameraCapability>(for elements: [T], with title: String, completion: @escaping (T) -> Void) -> some View {
+        Menu {
+            ForEach(elements) { element in
+                Button("\(element.rawValue)".uppercased(), action: { completion(element) })
+            }
+        } label: {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: "chevron.forward")
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .foregroundStyle(.white)
+        .background(Color(.systemGray6))
+        .cornerRadius(8)
+    }
+    
     var body: some View {
         VStack {
             SUICameraView(viewModel: viewModel)
@@ -27,14 +46,22 @@ struct ContentView: View {
             }
             .pickerStyle(.segmented)
             
+            if viewModel.currentCameraMode == .video {
+                buildMenu(for: viewModel.supportedVideoQualities, with: "Video Quality") { viewModel.change(videoQuality: $0) }
+            }
+            
+            buildMenu(for: viewModel.supportedShutterSpeeds, with: "Shutter Speed") { viewModel.change(shutterSpeed: $0) }
+            buildMenu(for: viewModel.supportedISO, with: "ISO") { viewModel.change(iso: $0) }
+            buildMenu(for: viewModel.supportedWhiteBalance, with: "White Balance") { viewModel.change(whiteBalance: $0) }
+            
             HStack {
                 switch viewModel.currentCameraMode {
                 case .photo:
                     Button("Capture Photo", action: viewModel.capturePhoto)
                 case .video:
-                    Button("Start Video Recording", action: viewModel.startVideoRecording)
+                    Button("Start Recording", action: viewModel.startVideoRecording)
                     
-                    Button("Stop Video Recording", action: viewModel.stopVideoRecording)
+                    Button("Stop Recording", action: viewModel.stopVideoRecording)
                 }
             }
             .buttonStyle(.borderedProminent)

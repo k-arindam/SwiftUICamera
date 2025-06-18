@@ -25,11 +25,20 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     // MARK: Observable Members
     @Published internal var _busy: Bool = false
     @Published internal var currentMode: CameraMode
-    @Published internal var supportedVideoQualities: [SUICameraVideoQuality] = []
-    @Published internal var supportedShutterSpeeds: [SUICameraShutterSpeed] = []
-    @Published internal var supportedISO: [SUICameraISO] = []
-    @Published internal var supportedWhiteBalance: [SUICameraWB] = []
+    @Published internal var previewScale: PreviewScale = .fit
     @Published internal var deviceOrientation: UIDeviceOrientation
+    
+    @Published public internal(set) var supportedVideoQualities: [SUICameraVideoQuality] = []
+    @Published public internal(set) var currentVideoQuality: SUICameraVideoQuality = .vqFHD30FPS
+    
+    @Published public internal(set) var supportedShutterSpeeds: [SUICameraShutterSpeed] = []
+    @Published public internal(set) var currentShutterSpeed: SUICameraShutterSpeed = .auto
+    
+    @Published public internal(set) var supportedISO: [SUICameraISO] = []
+    @Published public internal(set) var currentISO: SUICameraISO = .auto
+    
+    @Published public internal(set) var supportedWhiteBalance: [SUICameraWB] = []
+    @Published public internal(set) var currentWhiteBalance: SUICameraWB = .auto
     
     // MARK: Final Members
     internal let mainqueue = DispatchQueue.main
@@ -51,6 +60,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     internal var session: AVCaptureSession?
     internal var videoDevice: SUICameraVideoDevice? = nil
     internal var audioDevice: SUICameraAudioDevice? = nil
+    internal var videoQualityDescriptions: [SUICameraVideoQuality: VQDescription] = [:]
     
     public var dataDelegate: SUICameraDataDelegate? = nil
     
@@ -108,18 +118,49 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     }
     
     internal func configure(
+        device: AVCaptureDevice,
         session: AVCaptureSession,
         releaseLock: Bool = true,
         body: @Sendable @escaping () -> Void,
-        completion: (@Sendable () -> Void)? = nil
+        completion: (@Sendable (_ error: SUICameraError?) -> Void)? = nil
     ) -> Void {
-        bgqueue.async {
-            self.busy = true
-            session.beginConfiguration()
-            body()
-            session.commitConfiguration()
-            completion?()
-            if releaseLock { self.busy = false }
+        @Sendable func bodyInternal() throws(SUICameraError) -> Void {
+            do {
+                try device.lockForConfiguration()
+                body()
+                device.unlockForConfiguration()
+            } catch {
+                throw .system(error.localizedDescription)
+            }
+        }
+        
+        self.configure(session: session, releaseLock: releaseLock, body: bodyInternal, completion: completion)
+    }
+    
+    internal func configure(
+        session: AVCaptureSession,
+        releaseLock: Bool = true,
+        body: @Sendable @escaping () throws(SUICameraError) -> Void,
+        completion: (@Sendable (_ error: SUICameraError?) -> Void)? = nil
+    ) -> Void {
+        self.bgqueue.async {
+            var cameraError: SUICameraError? = nil
+            
+            defer {
+                completion?(cameraError)
+                if releaseLock { self.busy = false }
+            }
+            
+            do {
+                self.busy = true
+                session.beginConfiguration()
+                try body()
+                session.commitConfiguration()
+            } catch let error as SUICameraError {
+                cameraError = error
+            } catch {
+                cameraError = .unknown
+            }
         }
     }
     
@@ -206,13 +247,48 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
             } catch {
                 debugPrint("----->>> createSession() ERROR: \(error)")
             }
-        } completion: {
+        } completion: { error in
             session.startRunning()
+            self.updateCapabilities()
+        }
+    }
+    
+    internal func clearCapabilities() -> Void {
+        mainqueue.async {
+            self.videoQualityDescriptions.removeAll()
+            self.supportedVideoQualities.removeAll()
+            self.supportedShutterSpeeds.removeAll()
+            self.supportedISO.removeAll()
+            self.supportedWhiteBalance.removeAll()
+        }
+    }
+    
+    internal func updateCapabilities() -> Void {
+        clearCapabilities()
+        guard let device = videoDevice?.avCaptureDevice else { return }
+        
+        let videoQualities = self.fetchSupportedVideoQualities(of: device)
+        let shutterSpeeds = self.fetchSupportedShutterSpeeds(of: device)
+        let iso = self.fetchSupportedISO(of: device)
+        let whiteBalance = self.fetchSupportedWB(of: device)
+        
+        mainqueue.async {
+            self.supportedVideoQualities = videoQualities
+            self.supportedShutterSpeeds = shutterSpeeds
+            self.supportedISO = iso
+            self.supportedWhiteBalance = whiteBalance
         }
     }
     
     public func change(aspectRatio to: Int) -> Void {
         guard currentMode == .photo else { return }
+    }
+    
+    public func change(previewScale to: PreviewScale) -> Void {
+        guard previewScale != to else { return }
+        mainqueue.async {
+            self.previewScale = to
+        }
     }
     
     public func switchMode(to mode: CameraMode) -> Void {
@@ -233,7 +309,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         
         self.configure(session: session, releaseLock: releaseLock) {
             session.sessionPreset = mode.preset
-        } completion: {
+        } completion: { error in
             completion(true)
         }
     }

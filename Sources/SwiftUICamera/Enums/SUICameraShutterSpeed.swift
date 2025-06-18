@@ -7,7 +7,10 @@
 
 import Foundation
 
-public enum SUICameraShutterSpeed: Int, Codable, CaseIterable {
+public enum SUICameraShutterSpeed: Int, SUICameraCapability {
+    public typealias T = Int
+    public var id: Int { rawValue }
+    
     case auto = 0
     case ss1 = 1
     case ss2 = 2

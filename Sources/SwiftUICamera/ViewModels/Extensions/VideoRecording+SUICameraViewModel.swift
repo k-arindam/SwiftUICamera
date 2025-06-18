@@ -48,7 +48,21 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
         }
     }
     
-    public func change(videoQuality to: SUICameraVideoQuality) -> Void {}
+    public func change(videoQuality to: SUICameraVideoQuality) -> Void {
+        guard !busy,
+              currentVideoQuality != to,
+              let session,
+              let description = videoQualityDescriptions[to],
+              let device = videoDevice?.avCaptureDevice
+        else { return }
+        
+        mainqueue.async { self.currentVideoQuality = to }
+        configure(device: device, session: session) {
+            device.activeFormat = description.format
+            device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
+            device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
+        }
+    }
     
     internal func fetchSupportedVideoQualities(of device: AVCaptureDevice) -> [SUICameraVideoQuality] {
         var videoQualities = [SUICameraVideoQuality]()
@@ -60,8 +74,14 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
             for range in frameRateRanges {
                 let frameRate = Int(range.maxFrameRate)
                 
-                guard let videoQuality = SUICameraVideoQuality.fromRawVideoQuality(dimensions, fps: frameRate) else { continue }
+                guard let videoQuality = SUICameraVideoQuality.fromRawVideoQuality(dimensions, fps: frameRate),
+                      !videoQualities.contains(videoQuality)
+                else { continue }
+                
+                let description = VQDescription(format: format, frameRate: frameRate)
+                
                 videoQualities.append(videoQuality)
+                videoQualityDescriptions.updateValue(description, forKey: videoQuality)
             }
         }
         

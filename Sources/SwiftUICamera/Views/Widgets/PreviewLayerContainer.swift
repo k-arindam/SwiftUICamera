@@ -39,6 +39,11 @@ internal class PreviewLayerContainer: UIView {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.updatePreview() }
             .store(in: &cancellables)
+        
+        viewModel.$previewScale
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] scale in self?.preview.videoGravity = scale.videoGravity }
+            .store(in: &cancellables)
     }
     
     private func updatePreview() -> Void {
