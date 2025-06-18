@@ -25,6 +25,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     // MARK: Observable Members
     @Published internal var _busy: Bool = false
     @Published internal var currentMode: CameraMode
+    @Published internal var previewScale: PreviewScale = .fit
     @Published internal var supportedVideoQualities: [SUICameraVideoQuality] = []
     @Published internal var supportedShutterSpeeds: [SUICameraShutterSpeed] = []
     @Published internal var supportedISO: [SUICameraISO] = []
@@ -213,6 +214,13 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     public func change(aspectRatio to: Int) -> Void {
         guard currentMode == .photo else { return }
+    }
+    
+    public func change(previewScale to: PreviewScale) -> Void {
+        guard previewScale != to else { return }
+        mainqueue.async {
+            self.previewScale = to
+        }
     }
     
     public func switchMode(to mode: CameraMode) -> Void {
