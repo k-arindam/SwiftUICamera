@@ -7,7 +7,10 @@
 
 import Foundation
 
-public enum SUICameraWB: Int, Codable, CaseIterable {
+public enum SUICameraWB: Int, SUICameraCapability {
+    public typealias T = Int
+    public var id: Int { rawValue }
+    
     case auto = 0
     case wb2300 = 2300
     case wb2700 = 2700

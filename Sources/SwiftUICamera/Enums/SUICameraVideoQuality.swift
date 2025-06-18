@@ -7,7 +7,10 @@
 
 import AVFoundation
 
-public enum SUICameraVideoQuality: String, Codable, CaseIterable {
+public enum SUICameraVideoQuality: String, SUICameraCapability {
+    public typealias T = String
+    public var id: String { rawValue }
+    
     case vq4K24FPS = "4K 24FPS"
     case vq4K30FPS = "4K 30FPS"
     case vq4K60FPS = "4K 60FPS"
