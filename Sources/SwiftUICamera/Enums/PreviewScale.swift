@@ -7,7 +7,7 @@
 
 import AVFoundation
 
-public enum PreviewScale {
+public enum PreviewScale: Codable, Sendable {
     case fit
     case fill
     

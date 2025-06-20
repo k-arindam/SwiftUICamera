@@ -24,7 +24,7 @@ public extension SUICameraViewModel {
     }
     
     func change(iso to: SUICameraISO) -> Void {
-        guard currentISO != to else { return }
+        guard currentISO != to, supportedISO.contains(to) else { return }
         mainqueue.async { self.currentISO = to }
         
         switch to {

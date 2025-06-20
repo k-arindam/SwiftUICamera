@@ -14,6 +14,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         self.videoDevice = config.videoDevice
         self.audioDevice = config.audioDevice
         self.currentMode = config.initialMode
+        self.gridEnabled = config.initiallyGridEnabled
         
         self.deviceOrientation = UIDevice.current.orientation
         
@@ -27,6 +28,7 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     @Published internal var currentMode: CameraMode
     @Published internal var previewScale: PreviewScale = .fit
     @Published internal var deviceOrientation: UIDeviceOrientation
+    @Published internal var previewBounds: CGRect = .zero
     
     @Published public internal(set) var supportedVideoQualities: [SUICameraVideoQuality] = []
     @Published public internal(set) var currentVideoQuality: SUICameraVideoQuality = .vqFHD30FPS
@@ -39,6 +41,8 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     
     @Published public internal(set) var supportedWhiteBalance: [SUICameraWB] = []
     @Published public internal(set) var currentWhiteBalance: SUICameraWB = .auto
+    
+    @Published public var gridEnabled: Bool
     
     // MARK: Final Members
     internal let mainqueue = DispatchQueue.main
@@ -115,6 +119,59 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         case .landscapeLeft: return 0.0
         default: return 90.0
         }
+    }
+    
+    internal var currentDimension: CGSize? {
+        if let desc = videoDevice?.avCaptureDevice?.activeFormat.formatDescription {
+            let dims = CMVideoFormatDescriptionGetDimensions(desc)
+            return CGSize(width: Int(dims.width), height: Int(dims.height))
+        }
+        
+        return nil
+    }
+    
+    @MainActor internal var actualPreviewBounds: CGRect? { calculateActualPreviewBounds() }
+    
+    @MainActor
+    private func calculateActualPreviewBounds() -> CGRect? {
+        let connectedScenes = UIApplication.shared.connectedScenes
+        
+        if let videoDimension = self.currentDimension,
+           let windowScene = connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
+            let orientation = windowScene.interfaceOrientation
+            
+            var videoWidth = CGFloat(videoDimension.width)
+            var videoHeight = CGFloat(videoDimension.height)
+            
+            if orientation.isPortrait {
+                swap(&videoWidth, &videoHeight)
+            }
+            
+            let layerRect = self.previewBounds
+            let layerWidth = layerRect.width
+            let layerHeight = layerRect.height
+            
+            let videoAspectRatio = videoWidth / videoHeight
+            let layerAspectRatio = layerWidth / layerHeight
+            
+            var displayRect = layerRect
+            
+            if videoAspectRatio > layerAspectRatio {
+                let newHeight = layerWidth / videoAspectRatio
+                let yOffset = (layerHeight - newHeight) / 2
+                displayRect.origin.y += yOffset
+                displayRect.size.height = newHeight
+            } else {
+                let newWidth = layerHeight * videoAspectRatio
+                let xOffset = (layerWidth - newWidth) / 2
+                displayRect.origin.x += xOffset
+                displayRect.size.width = newWidth
+            }
+            
+            return displayRect
+        }
+        
+        return nil
     }
     
     internal func configure(

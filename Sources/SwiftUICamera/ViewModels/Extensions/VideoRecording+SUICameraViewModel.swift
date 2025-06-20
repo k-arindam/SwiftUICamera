@@ -51,6 +51,7 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
     public func change(videoQuality to: SUICameraVideoQuality) -> Void {
         guard !busy,
               currentVideoQuality != to,
+              supportedVideoQualities.contains(to),
               let session,
               let description = videoQualityDescriptions[to],
               let device = videoDevice?.avCaptureDevice

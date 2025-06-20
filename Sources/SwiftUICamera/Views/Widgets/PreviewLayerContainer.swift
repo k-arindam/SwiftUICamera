@@ -50,6 +50,7 @@ internal class PreviewLayerContainer: UIView {
         debugPrint("----->>> updatePreview() !!!")
         
         guard let viewModel, let connection = preview.connection else { return }
+        viewModel.previewBounds = self.preview.bounds
         
         let rotation = viewModel.videoRotationAngle
         

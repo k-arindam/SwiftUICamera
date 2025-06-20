@@ -5,7 +5,7 @@
 //  Created by Arindam Karmakar on 15/06/25.
 //
 
-import AVFoundation
+@preconcurrency import AVFoundation
 
 public extension SUICameraViewModel {
     internal func fetchSupportedWB(of device: AVCaptureDevice) -> [SUICameraWB] {
@@ -23,8 +23,44 @@ public extension SUICameraViewModel {
             return (wbGains.redGain <= maxGain) && (wbGains.greenGain <= maxGain) && (wbGains.blueGain <= maxGain)
         }
         
-        return SUICameraWB.allCases.filter { wbGainAvailable(for: $0) }
+        var wb = SUICameraWB.allCases.filter { wbGainAvailable(for: $0) }
+        
+        if !wb.contains(.auto) {
+            wb.append(.auto)
+        }
+        
+        return wb
     }
     
-    public func change(whiteBalance to: SUICameraWB) -> Void {}
+    func change(whiteBalance to: SUICameraWB) -> Void {
+        guard !busy,
+              currentWhiteBalance != to,
+              supportedWhiteBalance.contains(to),
+              let session,
+              let device = videoDevice?.avCaptureDevice
+        else { return }
+        
+        mainqueue.async { self.currentWhiteBalance = to }
+        
+        self.configure(device: device, session: session) {
+            if to == .auto {
+                if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                    device.whiteBalanceMode = .continuousAutoWhiteBalance
+                } else if device.isWhiteBalanceModeSupported(.autoWhiteBalance) {
+                    device.whiteBalanceMode = .autoWhiteBalance
+                }
+                
+                return
+            }
+            
+            if device.isWhiteBalanceModeSupported(.locked) {
+                device.whiteBalanceMode = .locked
+                
+                let chromaticValues = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(to.rawValue), tint: to.tint)
+                let gains = device.deviceWhiteBalanceGains(for: chromaticValues)
+                
+                device.setWhiteBalanceModeLocked(with: gains)
+            }
+        }
+    }
 }
