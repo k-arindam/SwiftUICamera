@@ -123,5 +123,11 @@ We welcome pull requests, suggestions, and issues. Let’s build the most seamle
 
 ## 🔗 Links
 
+- [Medium Article](https://medium.com/@k-arindam/building-a-camera-app-in-swiftui-shouldnt-feel-like-rocket-science-307c3a264675)
+- [Swift Package Index](https://swiftpackageindex.com/k-arindam/SwiftUICamera)
 - [Apple Documentation on AVFoundation](https://developer.apple.com/documentation/avfoundation)
 - [SwiftUI Documentation](https://developer.apple.com/documentation/swiftui)
+
+---
+
+Banner image created by [Canva AI](https://www.canva.com/ai)
