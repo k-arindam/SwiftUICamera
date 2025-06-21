@@ -17,12 +17,18 @@ internal extension SUICameraViewModel {
         self.configure(device: device, session: session) {
             switch to {
             case .auto:
-                device.exposureMode = .continuousAutoExposure
+                if device.isExposureModeSupported(.continuousAutoExposure) {
+                    device.exposureMode = .continuousAutoExposure
+                } else if device.isExposureModeSupported(.autoExpose) {
+                    device.exposureMode = .autoExpose
+                }
             case .manual(let duration, let iso):
-                let duration = duration ?? AVCaptureDevice.currentExposureDuration
-                let iso = iso ?? AVCaptureDevice.currentISO
-                
-                device.setExposureModeCustom(duration: duration, iso: iso)
+                if device.isExposureModeSupported(.custom) {
+                    let duration = duration ?? AVCaptureDevice.currentExposureDuration
+                    let iso = iso ?? AVCaptureDevice.currentISO
+                    
+                    device.setExposureModeCustom(duration: duration, iso: iso)
+                }
             }
         }
     }

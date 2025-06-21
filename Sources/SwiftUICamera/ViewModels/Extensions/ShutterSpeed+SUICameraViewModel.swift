@@ -25,7 +25,7 @@ public extension SUICameraViewModel {
     }
     
     func change(shutterSpeed to: SUICameraShutterSpeed) -> Void {
-        guard currentShutterSpeed != to else { return }
+        guard currentShutterSpeed != to, supportedShutterSpeeds.contains(to) else { return }
         mainqueue.async { self.currentShutterSpeed = to }
         
         switch to {
