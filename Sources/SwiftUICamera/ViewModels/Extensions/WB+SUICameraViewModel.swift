@@ -33,7 +33,7 @@ public extension SUICameraViewModel {
     }
     
     func change(whiteBalance to: SUICameraWB, completion: CapabilityChangeCallback = nil) -> Void {
-        let precheckResult = precheck(current: currentWhiteBalance, selecting: to, from: supportedWhiteBalance)
+        let precheckResult = precheck(selecting: to, from: supportedWhiteBalance, current: currentWhiteBalance)
         
         switch precheckResult {
         case .redundant:

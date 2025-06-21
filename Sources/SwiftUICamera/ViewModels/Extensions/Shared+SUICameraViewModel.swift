@@ -8,7 +8,7 @@
 @preconcurrency import AVFoundation
 
 internal extension SUICameraViewModel {
-    func precheck<T>(current: T, selecting: T, from: [T]) -> PrecheckResult where T: SUICameraCapability {
+    func precheck<T>(selecting: T, from: [T], current: T) -> PrecheckResult where T: SUICameraCapability {
         guard !busy else { return .error(.busy) }
         
         guard current != selecting else { return .redundant }

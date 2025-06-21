@@ -49,7 +49,7 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
     }
     
     public func change(videoQuality to: SUICameraVideoQuality, completion: CapabilityChangeCallback = nil) -> Void {
-        let precheckResult = precheck(current: currentVideoQuality, selecting: to, from: supportedVideoQualities)
+        let precheckResult = precheck(selecting: to, from: supportedVideoQualities, current: currentVideoQuality)
         
         switch precheckResult {
         case .redundant:

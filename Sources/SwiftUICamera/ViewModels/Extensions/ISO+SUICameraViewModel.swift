@@ -24,7 +24,7 @@ public extension SUICameraViewModel {
     }
     
     func change(iso to: SUICameraISO, completion: CapabilityChangeCallback = nil) -> Void {
-        let precheckResult = precheck(current: currentISO, selecting: to, from: supportedISO)
+        let precheckResult = precheck(selecting: to, from: supportedISO, current: currentISO)
         
         switch precheckResult {
         case .redundant:

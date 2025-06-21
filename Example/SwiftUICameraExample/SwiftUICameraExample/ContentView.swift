@@ -28,11 +28,7 @@ struct ContentView: View {
                 Image(systemName: "chevron.forward")
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity)
-        .foregroundStyle(.white)
-        .background(Color(.systemGray6))
-        .cornerRadius(8)
+        .suicameraConfigCard()
     }
     
     var body: some View {
@@ -45,6 +41,9 @@ struct ContentView: View {
                 }
             }
             .pickerStyle(.segmented)
+            
+            Toggle("Grid", isOn: $viewModel.gridEnabled)
+                .suicameraConfigCard()
             
             if viewModel.currentCameraMode == .video {
                 buildMenu(for: viewModel.supportedVideoQualities, with: "Video Quality") { viewModel.change(videoQuality: $0) }
@@ -97,4 +96,14 @@ final class DataHandler: SUICameraDataDelegate {
 
 #Preview {
     ContentView()
+}
+
+extension View {
+    func suicameraConfigCard() -> some View {
+        self.padding()
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(.white)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+    }
 }

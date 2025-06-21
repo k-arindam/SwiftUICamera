@@ -25,7 +25,7 @@ public extension SUICameraViewModel {
     }
     
     func change(shutterSpeed to: SUICameraShutterSpeed, completion: CapabilityChangeCallback = nil) -> Void {
-        let precheckResult = precheck(current: currentShutterSpeed, selecting: to, from: supportedShutterSpeeds)
+        let precheckResult = precheck(selecting: to, from: supportedShutterSpeeds, current: currentShutterSpeed)
         
         switch precheckResult {
         case .redundant:
