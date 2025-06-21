@@ -8,5 +8,5 @@
 import Foundation
 
 public extension SUICameraViewModel {
-    func change(focus to: Int) -> Void {}
+    func change(focus to: Int, completion: CapabilityChangeCallback = nil) -> Void {}
 }

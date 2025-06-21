@@ -48,20 +48,31 @@ extension SUICameraViewModel: AVCaptureFileOutputRecordingDelegate {
         }
     }
     
-    public func change(videoQuality to: SUICameraVideoQuality) -> Void {
-        guard !busy,
-              currentVideoQuality != to,
-              supportedVideoQualities.contains(to),
-              let session,
-              let description = videoQualityDescriptions[to],
-              let device = videoDevice?.avCaptureDevice
-        else { return }
+    public func change(videoQuality to: SUICameraVideoQuality, completion: CapabilityChangeCallback = nil) -> Void {
+        let precheckResult = precheck(current: currentVideoQuality, selecting: to, from: supportedVideoQualities)
         
-        mainqueue.async { self.currentVideoQuality = to }
-        configure(device: device, session: session) {
-            device.activeFormat = description.format
-            device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
-            device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
+        switch precheckResult {
+        case .redundant:
+            completion?(.success(to))
+            
+        case .error(let error):
+            completion?(.failure(error))
+            
+        case .proceed(let session, let device):
+            guard let description = videoQualityDescriptions[to] else {
+                completion?(.failure(.unsupported))
+                return
+            }
+            
+            mainqueue.async { self.currentVideoQuality = to }
+            
+            configure(device: device, session: session) {
+                device.activeFormat = description.format
+                device.activeVideoMinFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
+                device.activeVideoMaxFrameDuration = CMTimeMake(value: 1, timescale: Int32(description.frameRate))
+                
+                completion?(.success(to))
+            }
         }
     }
     

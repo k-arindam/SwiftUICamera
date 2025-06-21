@@ -32,34 +32,45 @@ public extension SUICameraViewModel {
         return wb
     }
     
-    func change(whiteBalance to: SUICameraWB) -> Void {
-        guard !busy,
-              currentWhiteBalance != to,
-              supportedWhiteBalance.contains(to),
-              let session,
-              let device = videoDevice?.avCaptureDevice
-        else { return }
+    func change(whiteBalance to: SUICameraWB, completion: CapabilityChangeCallback = nil) -> Void {
+        let precheckResult = precheck(current: currentWhiteBalance, selecting: to, from: supportedWhiteBalance)
         
-        mainqueue.async { self.currentWhiteBalance = to }
-        
-        self.configure(device: device, session: session) {
-            if to == .auto {
-                if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
-                    device.whiteBalanceMode = .continuousAutoWhiteBalance
-                } else if device.isWhiteBalanceModeSupported(.autoWhiteBalance) {
-                    device.whiteBalanceMode = .autoWhiteBalance
-                }
-                
-                return
-            }
+        switch precheckResult {
+        case .redundant:
+            completion?(.success(to))
             
-            if device.isWhiteBalanceModeSupported(.locked) {
-                device.whiteBalanceMode = .locked
-                
-                let chromaticValues = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(to.rawValue), tint: to.tint)
-                let gains = device.deviceWhiteBalanceGains(for: chromaticValues)
-                
-                device.setWhiteBalanceModeLocked(with: gains)
+        case .error(let error):
+            completion?(.failure(error))
+            
+        case .proceed(let session, let device):
+            mainqueue.async { self.currentWhiteBalance = to }
+            
+            self.configure(device: device, session: session) {
+                switch to {
+                case .auto:
+                    if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                        device.whiteBalanceMode = .continuousAutoWhiteBalance
+                        completion?(.success(to))
+                    } else if device.isWhiteBalanceModeSupported(.autoWhiteBalance) {
+                        device.whiteBalanceMode = .autoWhiteBalance
+                        completion?(.success(to))
+                    } else {
+                        completion?(.failure(.unsupported))
+                    }
+                default:
+                    guard device.isWhiteBalanceModeSupported(.locked) else {
+                        completion?(.failure(.unsupported))
+                        return
+                    }
+                    
+                    device.whiteBalanceMode = .locked
+                    
+                    let chromaticValues = AVCaptureDevice.WhiteBalanceTemperatureAndTintValues(temperature: Float(to.rawValue), tint: to.tint)
+                    let gains = device.deviceWhiteBalanceGains(for: chromaticValues)
+                    
+                    device.setWhiteBalanceModeLocked(with: gains)
+                    completion?(.success(to))
+                }
             }
         }
     }

@@ -24,16 +24,38 @@ public extension SUICameraViewModel {
         return shutterSpeeds
     }
     
-    func change(shutterSpeed to: SUICameraShutterSpeed) -> Void {
-        guard currentShutterSpeed != to, supportedShutterSpeeds.contains(to) else { return }
-        mainqueue.async { self.currentShutterSpeed = to }
+    func change(shutterSpeed to: SUICameraShutterSpeed, completion: CapabilityChangeCallback = nil) -> Void {
+        let precheckResult = precheck(current: currentShutterSpeed, selecting: to, from: supportedShutterSpeeds)
         
-        switch to {
-        case .auto:
-            self.change(exposure: .auto)
-        default:
-            let exposure = SUICameraExposure.manual(duration: CMTimeMake(value: 1, timescale: Int32(to.rawValue)), iso: nil)
-            self.change(exposure: exposure)
+        switch precheckResult {
+        case .redundant:
+            completion?(.success(to))
+            
+        case .error(let error):
+            completion?(.failure(error))
+            
+        case .proceed(let session, let device):
+            mainqueue.async { self.currentShutterSpeed = to }
+            
+            switch to {
+            case .auto:
+                self.change(
+                    exposure: .auto,
+                    on: device,
+                    with: session,
+                    alias: to,
+                    completion: completion
+                )
+            default:
+                let exposure = SUICameraExposure.manual(duration: CMTimeMake(value: 1, timescale: Int32(to.rawValue)), iso: nil)
+                self.change(
+                    exposure: exposure,
+                    on: device,
+                    with: session,
+                    alias: to,
+                    completion: completion
+                )
+            }
         }
     }
 }

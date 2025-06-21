@@ -174,53 +174,6 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         return nil
     }
     
-    internal func configure(
-        device: AVCaptureDevice,
-        session: AVCaptureSession,
-        releaseLock: Bool = true,
-        body: @Sendable @escaping () -> Void,
-        completion: (@Sendable (_ error: SUICameraError?) -> Void)? = nil
-    ) -> Void {
-        @Sendable func bodyInternal() throws(SUICameraError) -> Void {
-            do {
-                try device.lockForConfiguration()
-                body()
-                device.unlockForConfiguration()
-            } catch {
-                throw .system(error.localizedDescription)
-            }
-        }
-        
-        self.configure(session: session, releaseLock: releaseLock, body: bodyInternal, completion: completion)
-    }
-    
-    internal func configure(
-        session: AVCaptureSession,
-        releaseLock: Bool = true,
-        body: @Sendable @escaping () throws(SUICameraError) -> Void,
-        completion: (@Sendable (_ error: SUICameraError?) -> Void)? = nil
-    ) -> Void {
-        self.bgqueue.async {
-            var cameraError: SUICameraError? = nil
-            
-            defer {
-                completion?(cameraError)
-                if releaseLock { self.busy = false }
-            }
-            
-            do {
-                self.busy = true
-                session.beginConfiguration()
-                try body()
-                session.commitConfiguration()
-            } catch let error as SUICameraError {
-                cameraError = error
-            } catch {
-                cameraError = .unknown
-            }
-        }
-    }
-    
     internal func attach(device: any SUICameraCaptureDevice, to session: AVCaptureSession) throws -> Void {
         func removeDevice(of type: DeviceType) -> Void {
             for input in session.inputs {
@@ -335,21 +288,6 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
             self.supportedISO = iso
             self.supportedWhiteBalance = whiteBalance
         }
-    }
-    
-    public func change(aspectRatio to: Int) -> Void {
-        guard currentMode == .photo else { return }
-    }
-    
-    public func change(previewScale to: PreviewScale) -> Void {
-        guard previewScale != to else { return }
-        mainqueue.async {
-            self.previewScale = to
-        }
-    }
-    
-    public func switchMode(to mode: CameraMode) -> Void {
-        self.switchMode(to: mode, releaseLock: true) { _ in }
     }
     
     internal func switchMode(

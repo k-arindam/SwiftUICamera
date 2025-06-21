@@ -23,16 +23,38 @@ public extension SUICameraViewModel {
         return iso
     }
     
-    func change(iso to: SUICameraISO) -> Void {
-        guard currentISO != to, supportedISO.contains(to) else { return }
-        mainqueue.async { self.currentISO = to }
+    func change(iso to: SUICameraISO, completion: CapabilityChangeCallback = nil) -> Void {
+        let precheckResult = precheck(current: currentISO, selecting: to, from: supportedISO)
         
-        switch to {
-        case .auto:
-            self.change(exposure: .auto)
-        default:
-            let exposure = SUICameraExposure.manual(duration: nil, iso: Float(to.rawValue))
-            self.change(exposure: exposure)
+        switch precheckResult {
+        case .redundant:
+            completion?(.success(to))
+            
+        case .error(let error):
+            completion?(.failure(error))
+            
+        case .proceed(let session, let device):
+            mainqueue.async { self.currentISO = to }
+            
+            switch to {
+            case .auto:
+                self.change(
+                    exposure: .auto,
+                    on: device,
+                    with: session,
+                    alias: to,
+                    completion: completion
+                )
+            default:
+                let exposure = SUICameraExposure.manual(duration: nil, iso: Float(to.rawValue))
+                self.change(
+                    exposure: exposure,
+                    on: device,
+                    with: session,
+                    alias: to,
+                    completion: completion
+                )
+            }
         }
     }
 }
