@@ -13,6 +13,10 @@ public typealias VoidCallbackWithError = @Sendable (SUICameraError?) -> Void
 
 public typealias ResultCallback<T> = @Sendable (Result<T, SUICameraError>) -> Void
 
-public typealias CapabilityChangeCallback = ResultCallback<any SUICameraCapability>?
+public typealias CapabilityChangeCallback = ResultCallback<any HashCodable>?
+
+public typealias HashCodable = Hashable & Codable & Sendable
+
+public typealias HashComparable = HashCodable & Comparable
 
 public typealias JSON = [String: Any]

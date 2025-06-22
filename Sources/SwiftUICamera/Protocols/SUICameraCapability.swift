@@ -7,8 +7,8 @@
 
 import Foundation
 
-public protocol SUICameraCapability: Codable, Hashable, Identifiable, Sendable, CaseIterable {
-    associatedtype T: Hashable & Codable
+public protocol SUICameraCapability: HashCodable, Identifiable, Sendable, CaseIterable {
+    associatedtype T: HashCodable
     
     var rawValue: T { get }
 }

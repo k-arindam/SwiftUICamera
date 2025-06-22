@@ -14,13 +14,12 @@ public extension SUICameraViewModel {
         
         guard minISO < maxISO else { return [] }
         
-        var iso = SUICameraISO.allCases.filter { (minISO...maxISO).contains($0.rawValue) }
+        let supportsAuto = device.isExposureModeSupported(.continuousAutoExposure) || device.isExposureModeSupported(.autoExpose)
         
-        if !iso.contains(.auto) {
-            iso.append(.auto)
+        return SUICameraISO.allCases.filter { iso in
+            if iso == .auto { return supportsAuto }
+            return (minISO...maxISO).contains(iso.rawValue)
         }
-        
-        return iso
     }
     
     func change(iso to: SUICameraISO, completion: CapabilityChangeCallback = nil) -> Void {

@@ -12,16 +12,14 @@ public extension SUICameraViewModel {
         let minExposureDuration = CMTimeGetSeconds(device.activeFormat.minExposureDuration)
         let maxExposureDuration = CMTimeGetSeconds(device.activeFormat.maxExposureDuration)
         
-        var shutterSpeeds = SUICameraShutterSpeed.allCases.filter { shutterSpeed in
+        let supportsAuto = device.isExposureModeSupported(.continuousAutoExposure) || device.isExposureModeSupported(.autoExpose)
+        
+        return SUICameraShutterSpeed.allCases.filter { shutterSpeed in
+            if shutterSpeed == .auto { return supportsAuto }
+            
             let actualSpeed = 1.0 / Float64(shutterSpeed.rawValue)
             return (minExposureDuration...maxExposureDuration).contains(actualSpeed)
         }
-        
-        if !shutterSpeeds.contains(.auto) {
-            shutterSpeeds.append(.auto)
-        }
-        
-        return shutterSpeeds
     }
     
     func change(shutterSpeed to: SUICameraShutterSpeed, completion: CapabilityChangeCallback = nil) -> Void {

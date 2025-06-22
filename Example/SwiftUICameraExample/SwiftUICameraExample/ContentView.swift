@@ -10,13 +10,14 @@ import SwiftUICamera
 import AVFoundation
 
 struct ContentView: View {
-    @StateObject var viewModel = SUICameraViewModel(with: .init(
+    @StateObject var vm = SUICameraViewModel(with: .init(
         videoDevice: .backWideAngleCamera,
         audioDevice: .internalMicrophone,
-        initialMode: .photo
+        initialMode: .photo,
+        initiallyGridEnabled: true
     ))
     
-    private func buildMenu<T: SUICameraCapability>(for elements: [T], with title: String, completion: @escaping (T) -> Void) -> some View {
+    private func buildMenu<T: SUICameraCapability>(for elements: [T], with title: String, current: T, completion: @escaping (T) -> Void) -> some View {
         Menu {
             ForEach(elements) { element in
                 Button("\(element.rawValue)".uppercased(), action: { completion(element) })
@@ -28,46 +29,54 @@ struct ContentView: View {
                 Image(systemName: "chevron.forward")
             }
         }
-        .suicameraConfigCard()
     }
     
     var body: some View {
         VStack {
-            SUICameraView(viewModel: viewModel)
+            SUICameraView(viewModel: vm)
+                .frame(height: UIScreen.main.bounds.height * 0.5)
             
-            Picker("Camera Mode", selection: $viewModel.currentCameraMode) {
-                ForEach(CameraMode.allCases, id: \.self) { mode in
-                    Text(mode.rawValue.uppercased())
-                }
-            }
-            .pickerStyle(.segmented)
-            
-            Toggle("Grid", isOn: $viewModel.gridEnabled)
-                .suicameraConfigCard()
-            
-            if viewModel.currentCameraMode == .video {
-                buildMenu(for: viewModel.supportedVideoQualities, with: "Video Quality") { viewModel.change(videoQuality: $0) }
-            }
-            
-            buildMenu(for: viewModel.supportedShutterSpeeds, with: "Shutter Speed") { viewModel.change(shutterSpeed: $0) }
-            buildMenu(for: viewModel.supportedISO, with: "ISO") { viewModel.change(iso: $0) }
-            buildMenu(for: viewModel.supportedWhiteBalance, with: "White Balance") { viewModel.change(whiteBalance: $0) }
-            
-            HStack {
-                switch viewModel.currentCameraMode {
-                case .photo:
-                    Button("Capture Photo", action: viewModel.capturePhoto)
-                case .video:
-                    Button("Start Recording", action: viewModel.startVideoRecording)
+            List {
+                Section("Basic Operations") {
+                    Picker("Camera Mode", selection: $vm.currentCameraMode) {
+                        ForEach(CameraMode.allCases, id: \.self) { mode in
+                            Text(mode.rawValue.uppercased())
+                        }
+                    }
+                    .pickerStyle(.segmented)
                     
-                    Button("Stop Recording", action: viewModel.stopVideoRecording)
+                    Toggle("Grid", isOn: $vm.gridEnabled)
+                }
+                
+                Section("Advanced Operations") {
+                    if vm.currentCameraMode == .video {
+                        buildMenu(for: vm.supportedVideoQualities, with: "Video Quality", current: vm.currentVideoQuality) { vm.change(videoQuality: $0) }
+                    }
+                    
+                    buildMenu(for: vm.supportedFocus, with: "Focus", current: vm.currentFocus) { vm.change(focus: $0) }
+                    buildMenu(for: vm.supportedZoom, with: "Zoom", current: vm.currentZoom) { vm.change(zoom: $0) }
+                    buildMenu(for: vm.supportedShutterSpeeds, with: "Shutter Speed", current: vm.currentShutterSpeed) { vm.change(shutterSpeed: $0) }
+                    buildMenu(for: vm.supportedISO, with: "ISO", current: vm.currentISO) { vm.change(iso: $0) }
+                    buildMenu(for: vm.supportedWhiteBalance, with: "White Balance", current: vm.currentWhiteBalance) { vm.change(whiteBalance: $0) }
+                }
+                
+                Section("Capture & Save") {
+                    HStack {
+                        switch vm.currentCameraMode {
+                        case .photo:
+                            Button("Capture Photo", action: vm.capturePhoto)
+                        case .video:
+                            Button("Start Recording", action: vm.startVideoRecording)
+                            
+                            Button("Stop Recording", action: vm.stopVideoRecording)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
-            .buttonStyle(.borderedProminent)
         }
-        .padding()
-        .animation(.easeInOut, value: viewModel.currentCameraMode)
-        .task { viewModel.dataDelegate = DataHandler() }
+        .animation(.easeInOut, value: vm.currentCameraMode)
+        .task { vm.dataDelegate = DataHandler() }
     }
 }
 

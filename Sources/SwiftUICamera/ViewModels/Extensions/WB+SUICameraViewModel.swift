@@ -23,13 +23,12 @@ public extension SUICameraViewModel {
             return (wbGains.redGain <= maxGain) && (wbGains.greenGain <= maxGain) && (wbGains.blueGain <= maxGain)
         }
         
-        var wb = SUICameraWB.allCases.filter { wbGainAvailable(for: $0) }
+        let supportsAuto = device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) || device.isWhiteBalanceModeSupported(.autoWhiteBalance)
         
-        if !wb.contains(.auto) {
-            wb.append(.auto)
+        return SUICameraWB.allCases.filter { wb in
+            if wb == .auto { return supportsAuto }
+            return wbGainAvailable(for: wb)
         }
-        
-        return wb
     }
     
     func change(whiteBalance to: SUICameraWB, completion: CapabilityChangeCallback = nil) -> Void {

@@ -12,7 +12,7 @@ public struct SUICameraConfig {
         videoDevice: SUICameraVideoDevice? = nil,
         audioDevice: SUICameraAudioDevice? = nil,
         initialMode: CameraMode = .photo,
-        initiallyGridEnabled: Bool = true
+        initiallyGridEnabled: Bool = false
     ) {
         self.videoDevice = videoDevice
         self.audioDevice = audioDevice

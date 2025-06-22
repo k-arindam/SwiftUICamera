@@ -8,16 +8,26 @@
 @preconcurrency import AVFoundation
 
 internal extension SUICameraViewModel {
-    func precheck<T>(selecting: T, from: [T], current: T) -> PrecheckResult where T: SUICameraCapability {
+    private func precheck<T>(selecting: T, current: T) -> PrecheckResult where T: HashCodable {
         guard !busy else { return .error(.busy) }
         
         guard current != selecting else { return .redundant }
         
-        guard from.contains(selecting) else { return .error(.unsupported) }
-        
         guard let session, let device = videoDevice?.avCaptureDevice else { return .error(.unconfigured) }
         
         return .proceed(session, device)
+    }
+    
+    func precheck<T>(selecting: T, from: [T], current: T) -> PrecheckResult where T: SUICameraCapability {
+        guard from.contains(selecting) else { return .error(.unsupported) }
+        
+        return precheck(selecting: selecting, current: current)
+    }
+    
+    func precheck<T>(selecting: T, from: (min: T, max: T), current: T) -> PrecheckResult where T: HashComparable {
+        guard selecting >= from.min && selecting <= from.max else { return .error(.unsupported) }
+        
+        return precheck(selecting: selecting, current: current)
     }
     
     func configure(

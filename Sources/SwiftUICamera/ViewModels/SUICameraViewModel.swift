@@ -42,6 +42,12 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
     @Published public internal(set) var supportedWhiteBalance: [SUICameraWB] = []
     @Published public internal(set) var currentWhiteBalance: SUICameraWB = .auto
     
+    @Published public internal(set) var supportedFocus: [SUICameraFocus] = []
+    @Published public internal(set) var currentFocus: SUICameraFocus = .auto
+    
+    @Published public internal(set) var supportedZoom: [SUICameraZoom] = []
+    @Published public internal(set) var currentZoom: SUICameraZoom = .x1_0
+    
     @Published public var gridEnabled: Bool
     
     // MARK: Final Members
@@ -270,6 +276,8 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
             self.supportedShutterSpeeds.removeAll()
             self.supportedISO.removeAll()
             self.supportedWhiteBalance.removeAll()
+            self.supportedFocus.removeAll()
+            self.supportedZoom.removeAll()
         }
     }
     
@@ -281,12 +289,16 @@ public final class SUICameraViewModel: NSObject, ObservableObject, @unchecked Se
         let shutterSpeeds = self.fetchSupportedShutterSpeeds(of: device)
         let iso = self.fetchSupportedISO(of: device)
         let whiteBalance = self.fetchSupportedWB(of: device)
+        let focus = self.fetchSupportedFocus(of: device)
+        let zoom = self.fetchSupportedZoom(of: device)
         
         mainqueue.async {
             self.supportedVideoQualities = videoQualities
             self.supportedShutterSpeeds = shutterSpeeds
             self.supportedISO = iso
             self.supportedWhiteBalance = whiteBalance
+            self.supportedFocus = focus
+            self.supportedZoom = zoom
         }
     }
     
